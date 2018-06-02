@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', default='./data/', help='path to directory with data')
 opt = parser.parse_args()
 
-PositiveData, NegativeData, UnknownData, Invalid_ID, ID_coordinate, ID_isroad, ID_elevation, ID_slope= cPickle.load(open(opt.data_dir+'/processed_forest_trial_new.pkl'))
+PositiveData, NegativeData, UnknownData= cPickle.load(open(opt.data_dir+'/processed_forest_trial_new_deploy.pkl'))
 
 Pdata = []
 Ndata = []
@@ -44,9 +44,7 @@ id_label = []
 for i in range(wh_data.shape[0]):
     data1 = np.array([wh_data[i]])
     label[i] = np.argmin(np.sum(np.square(centroid-data1),1))
-#for i in range(num_clusters):
-labeli = label+1#(label==i) +1-1
-#print(np.sum(labeli))
+labeli = label+1
 labeli=zip(ALLID, labeli)
 invalid=zip(Invalid_ID,[0.0]*len(Invalid_ID))
 id_label=sorted(np.concatenate([labeli,invalid],0), key=lambda x:x[0], reverse=False)

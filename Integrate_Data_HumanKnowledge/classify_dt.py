@@ -15,7 +15,7 @@ FoldNum = 4
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', default='./data/', help='path to directory with data')
 opt = parser.parse_args()
-deployPositive, deployNegative, PositiveData, NegativeData, UnknownData, Invalid_ID, ID_coordinate, ID_isroad, ID_elevation, ID_slope = cPickle.load(open(opt.data_dir+'/processed_forest_trial_new_deploy.pkl','rb'))
+PositiveData, NegativeData, UnknownData = cPickle.load(open(opt.data_dir+'/processed_forest_trial_new_deploy.pkl','rb'))
 clusters = np.load(opt.data_dir+'/cluster40_scores.npy').item()
 clusters_50 = np.load(pt.data_dir+'/cluster50_scores.npy').item()
 clusters[0]=9
@@ -62,13 +62,6 @@ for i in range(500000):
     if i in UnknownData:
         Udata.append(UnknownData[i])
         UdataID.append(i%100000)
-    if i in deployPositive:
-        Pdata.append(deployPositive[i])
-        PdataID.append(i%100000)
-    if i in deployNegative:
-        Ndata.append(deployNegative[i])
-        NdataID.append(i%100000)
-
 
 PositiveData = np.array(Pdata)
 #PositiveData[:,12] = 0 

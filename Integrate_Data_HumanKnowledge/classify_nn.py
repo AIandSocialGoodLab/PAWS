@@ -69,7 +69,7 @@ with tf.Session() as sess:
     sess.run(init)
 
 
-deployPositive, deployNegative, PositiveData, NegativeData, UnknownData, Invalid_ID, ID_coordinate, ID_isroad, ID_elevation, ID_slope= cPickle.load(open(opt.data_dir+'/processed_forest_trial_new_deploy.pkl','rb'))
+PositiveData, NegativeData, UnknownData = cPickle.load(open(opt.data_dir+'/processed_forest_trial_new_deploy.pkl','rb'))
 
 Pdata = []
 Ndata = []
@@ -81,12 +81,6 @@ for i in range(5000000):
         Ndata.append(NegativeData[i])
     if i in UnknownData:
         Udata.append(UnknownData[i])
-    if i in deployPositive:
-        Pdata.append(deployPositive[i])
-        #PdataID.append(i%100000)
-    if i in deployNegative:
-        Ndata.append(deployNegative[i])
-        #NdataID.append(i%100000)
 
 PositiveData = np.array(Pdata)
 NegativeData = np.array(Ndata)
