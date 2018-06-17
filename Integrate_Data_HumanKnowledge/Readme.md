@@ -11,6 +11,9 @@ tensorflow==1.4
 matplotlib==2.1.0
 ```
 ### File Descriptions
+
+automate_data.py - This file automatically creates an excel sheet with the "is-" feaatures, "dist-" features, slope and elevation features, and normalized versions of these features when given shapefiles to draw data from.
+
 classify_dt.py - This file has an implementation of the Bagging Ensemble of Decision Trees. The implementation also uses the domain knowledge (clusters and individual feature thresholds) provided by experts during training. 
 
 classify_nn.py - This file implements a neural network ensemble replacing the decision tree in classify_dt.py
