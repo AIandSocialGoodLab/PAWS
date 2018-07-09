@@ -5,6 +5,8 @@ In both automate_data.py and make_data_pandas.py, there is a chunk of code label
 
 automate_data.py - This file automatically creates an excel sheet with the "is-" features, "dist-" features, slope and elevation features, and normalized versions of these features when given shapefiles to draw data from.
 
+dataset.py - Contains an implementation of the dataset object used to help facilitate implementation of make_data_pandas.py.
+
 make_data_pandas.py - This file tests an ensembling method coupled with xgboost, dynamic negative sampling, and oversampling on a given set of data, producing the predicted poaching probabilities into a text file and creating a raster file to demonstrates the said predictions.
 
 ### Run Code
