@@ -6,10 +6,31 @@ from sklearn.metrics import roc_auc_score
 from dataset import DataSet
 import xgboost as xgb
 
-# IMPORTANT: lines 338 - 340 must be customized such that the XLLCORNER
-# and YLLCORNER parameters are the coordinates of the bottom left corner
-# of the discretization in automate_data. In addion the CELLSIZE parameter
-# must also match accordingly
+####################################################################################################################################################  
+####################################################################################################################################################
+####################################################################################################################################################  
+####################################################################################################################################################
+#
+#         General Overview
+#
+#   Module 0 : Specifying feature names and output file names
+#   Module 1 : Preprocessing
+#   Module 2 : Defining a few functions
+#   Module 3 : Running the main functions
+#
+
+####################################################################################################################################################  
+####################################################################################################################################################
+####################################################################################################################################################  
+####################################################################################################################################################
+#
+#   Module 0 : Specifying paths and file names
+#
+#   IMPORTANT: lines 338 - 340 must be customized such that the XLLCORNER
+#   and YLLCORNER parameters are the coordinates of the bottom left corner
+#   of the discretization in automate_data. In addion the CELLSIZE parameter
+#   must also match accordingly
+#
 
 # name of text file output for probabilistic predictions of 
 # each grid cell
@@ -30,10 +51,13 @@ patrol = 'patrol'
 # specify which feature symbolizes where poaching occurs
 poaching = 'poaching'
 
-###################################################################################
-###################################################################################
-
-# preprocessing 
+####################################################################################################################################################  
+####################################################################################################################################################
+####################################################################################################################################################  
+####################################################################################################################################################
+#
+#   Module 1 : Preprocessing
+#
 
 df_alldata = pd.read_excel("final.csv")
 
@@ -71,9 +95,6 @@ df_slct_negative = df_allnegative[selected_features]
 
 df_slct_unlabeled = df_unknowndata[selected_features]
 
-###################################################################################
-###################################################################################
-
 PositiveData = df_slct_positive.values
 
 NegativeData = df_slct_negative.values
@@ -110,7 +131,16 @@ dataset = DataSet(positive=Fam, negative=NotFam, fold_num=FoldNum)
 # number of folds specified for classify_familiar_trial
 FoldNum = 4
 
-# run cross validation
+####################################################################################################################################################  
+####################################################################################################################################################
+####################################################################################################################################################  
+####################################################################################################################################################
+#
+#   Module 2 : Defining the main functions
+#
+
+# run cross validation and test decision tree ensembling with xgboost, dynamic negative sampling, and oversampleing
+# on the given data
 def classify_familiar_trial():
 	print("start classify familiar trial")
 	test_auc_list = []
@@ -215,6 +245,7 @@ def classify_familiar_trial():
 	total_list = total_list / numIter
 	print('mean over all iteration (test)', total_list)
 
+# Generate the actual predictions by training on all the data
 # qgis_file_in is the output of this function, which contains the probabilistic
 # predictions as a text file
 def main_poaching_predict(qgis_file_in):
@@ -347,8 +378,13 @@ def prep_qgis(qgis_file_in, qgis_file_out):
 			info = ' '.join([str(x) for x in line]) + '\n' + info
 		fout.write(info)
    
-###################################################################################
-###################################################################################
+####################################################################################################################################################  
+####################################################################################################################################################
+####################################################################################################################################################  
+####################################################################################################################################################
+#
+#   Module 3 : Running the main functions
+#
 
 # main functions:
 classify_familiar_trial()
@@ -356,3 +392,5 @@ classify_familiar_trial()
 # main_animal_predict("紫貂")
 main_poaching_predict(qgis_file_in)
 prep_qgis(qgis_file_in, qgis_file_out)
+
+
