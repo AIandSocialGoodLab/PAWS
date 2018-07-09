@@ -1,7 +1,4 @@
 
-Implementation of "Exploiting Data and Human Knowledge for Predicting Wildlife Poaching". (COMPASS 2018)
-
-```
 ### File Descriptions
 
 In both automate_data.py and make_data_pandas.py, there is a chunk of code labeled "Module 0" that requires the specification of the data being used, whether in the format of a raster shapefile, a vector shapefile, or an excel spreadsheet. Variables should be self explanatory and the documenation within these files should also give decent descriptions.
