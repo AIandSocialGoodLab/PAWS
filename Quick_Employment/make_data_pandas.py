@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-from sklearn import tree
-from sklearn.ensemble import BaggingClassifier
+#from sklearn import tree
+#from sklearn.ensemble import BaggingClassifier
 from sklearn.metrics import roc_auc_score
 from dataset import DataSet
 import xgboost as xgb
@@ -15,8 +15,13 @@ import xgboost as xgb
 #
 #   Module 0 : Specifying feature names and output file names
 #   Module 1 : Preprocessing
-#   Module 2 : Defining a few functions
+#   Module 2 : Defining the main functions
 #   Module 3 : Running the main functions
+#
+# 	We assume that the user has one conservation site with labeled data (conservation site 1) concerning where poaching
+#	and past patrol efforts have occurred, and use this knowledge to predict where future illegal attempts will be made in
+#	both conservation site 1 and the unlabeled area (conservation site 2), assuming their feature spaces are the same.
+#	We employ dynamic negative sampling of the unknown data, oversampling of the positive examples, and xgboost.
 #
 
 ####################################################################################################################################################  
@@ -26,30 +31,54 @@ import xgboost as xgb
 #
 #   Module 0 : Specifying paths and file names
 #
-#   IMPORTANT: lines 338 - 340 must be customized such that the XLLCORNER
-#   and YLLCORNER parameters are the coordinates of the bottom left corner
-#   of the discretization in automate_data. In addion the CELLSIZE parameter
-#   must also match accordingly
+#	The following are placeholders/examples
 #
 
+# name of excel sheet containing all the features and labels for conservation 1 and 2
+fn1 = "final1.csv"
+fn2 = "final2.csv"
+
 # name of text file output for probabilistic predictions of 
-# each grid cell
-qgis_file_in = "predictions.txt"
+# each grid cell in conservations 1 and 2 
+qgis_file_in1 = "predictions1txt"
+qgis_file_in2 = "predictions2.txt"
 # raster file of probabilistic predictions
-qgis_file_out = "predictions_heatmap.asc"
+qgis_file_out1 = "predictions_heatmap1.asc"
+qgis_file_out2 = "predictions_heatmap2.asc"
 # specify which features to use from final.csv feature spreadsheet
-selected_features = ["dist-village",
-					 "dist-patrol",
-					 "dist-example",
-					 "dist-feature",
-					 "is-names",
-					 "is-highway",
-					 "dem",
-					 "slope"]
+selected_features = ["is-railways",
+						"is-roads",
+						"is-waterways",
+						"is-town",
+						"is-village",
+						"normal-dist-railways",
+						"normal-dist-roads",
+						"normal-dist-waterways",
+						"normal-dist-city",
+						"normal-dist-town",
+						"normal-dist-village",
+						"normal-altitude",
+						"normal-slope"
+						 ]
 # specify which feature symbolizes where patrolling occurs
 patrol = 'patrol'
 # specify which feature symbolizes where poaching occurs
-poaching = 'poaching'
+poaching = 'poach'
+
+# represents the coordinates of the left bottom corner for 
+# conservation site 1 (longitude and latitude if working with WGS84)
+xcorner1 = 
+ycorner1 = 
+# represents the coordinates of the left bottom corner for 
+# conservation site 1 (longitude and latitude if working with WGS84)
+xcorner2 = 
+ycorner2 = 
+
+# define the grid sizes (discretization levels) for each conservations ite
+# which should match from the automate_data.py script
+gridDim1 = 0.003
+gridDim2 = 0.003
+
 
 ####################################################################################################################################################  
 ####################################################################################################################################################
@@ -59,7 +88,7 @@ poaching = 'poaching'
 #   Module 1 : Preprocessing
 #
 
-df_alldata = pd.read_excel("final.csv")
+df_alldata = pd.read_csv(fn1)
 
 # select data without nan
 df_validdata = df_alldata.dropna()
@@ -108,6 +137,26 @@ PositiveData = PositiveData/maxvals
 NegativeData = NegativeData/maxvals
 UnknownData = UnknownData/maxvals
 
+######################################################################################################################################################
+
+df_alldata2 = pd.read_csv(fn2)
+
+# select data without nan
+df_validdata2 = df_alldata2.dropna()
+
+# select data with nan 
+df_invaliddata2 = df_alldata2[df_alldata2.isnull().any(axis=1)]
+
+df_slct_valid = df_alldata2[selected_features]
+
+NewAllData = df_slct_valid.values
+NewAllData = NewAllData/maxvals
+
+######################################################################################################################################################
+
+# number of folds specified for classify_familiar_trial
+FoldNum = 4
+
 fold_pos_num = len(PositiveData) // FoldNum
 fold_neg_num = len(NegativeData) // FoldNum
 
@@ -120,16 +169,12 @@ NegativeData = NegativeData[fold_neg_num:]
 sample_size = NegativeData.shape[0]
 indx = np.random.randint(UnknownData.shape[0], size=sample_size)
 Udata = UnknownData[indx]
-#Udata1 = UnknownData[index[-sample_size:]]
 
 NotFam = np.concatenate((Udata, NegativeData), axis=0)
 neg_label = np.array([0.] * len(neg))
 Fam = PositiveData
 
 dataset = DataSet(positive=Fam, negative=NotFam, fold_num=FoldNum)
-
-# number of folds specified for classify_familiar_trial
-FoldNum = 4
 
 ####################################################################################################################################################  
 ####################################################################################################################################################
@@ -173,8 +218,8 @@ def classify_familiar_trial():
 				D_train = xgb.DMatrix(train_data, label = train_label)
 				D_test = xgb.DMatrix(test_data, label = test_label)
 
-				param = {'max_depth': 20, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
-				num_round = 5
+				param = {'max_depth': 10, 'eta': 0.1, 'silent': 1, 'objective': 'binary:logistic'}
+				num_round = 100
 
 				bst = xgb.train(param, D_train, num_round)
 
@@ -248,34 +293,35 @@ def classify_familiar_trial():
 # Generate the actual predictions by training on all the data
 # qgis_file_in is the output of this function, which contains the probabilistic
 # predictions as a text file
-def main_poaching_predict(qgis_file_in):
+def main_poaching_predict(qgis_file_in1, qgis_file_in2):
 	print("start main_poaching_predict")
 
-	PositiveDataID = df_allpositive["id"].values
-	NegativeDataID = df_allnegative["id"].values
-	UnknownDataID = df_unknowndata["id"].values
+	PositiveDataID = df_allpositive["DN"].values
+	NegativeDataID = df_allnegative["DN"].values
+	UnknownDataID = df_unknowndata["DN"].values
+	NewAllDataID = df_validdata2["DN"].values
 
 	ALLID = list(PositiveDataID) + list(NegativeDataID) + list(UnknownDataID)
 	ALLDATA = list(df_slct_positive.values) + \
 			  list(df_slct_negative.values) + \
 			  list(df_slct_unlabeled.values)
 
+	NEWALLID = list(NewAllDataID)
+	NEWALLDATA = list(df_slct_valid.values)
+
 	# how to sampling here
-	train_data, train_label = dataset.get_train_all_up(90)
+	train_data, train_label = dataset.get_train_all_up(100)
 	# clf = BaggingClassifier(tree.DecisionTreeClassifier(), n_estimators=1000, max_samples=0.1)
 	# clf.fit(train_data, train_label)
 
-	param = {'max_depth': 15, 'eta': 0.3, 'silent': 1, 'objective': 'binary:logistic'}
-	num_round = 10
-
-
-	# param = {'max_depth': 20, 'eta': 0.1, 'silent': 1, 'objective': 'binary:logistic'}
-	# num_round = 10
+	param = {'max_depth': 10, 'eta': 0.1, 'silent': 1, 'objective': 'binary:logistic'}
+	num_round = 1000
 
 	D_train = xgb.DMatrix(train_data, label = train_label)
 
 	bst = xgb.train(param, D_train, num_round)
 
+	########################################################################################################################
 
 	ALLDATA = np.array(ALLDATA)
 
@@ -295,24 +341,55 @@ def main_poaching_predict(qgis_file_in):
 	id_label = zip(ALLID, ALL_value)
 	id_label = list(id_label)
 
-	Invalid_ID = df_invaliddata["id"].values
+	Invalid_ID = df_invaliddata["DN"].values
 	for id in Invalid_ID:
 		id_label.append((id, 0.0))
 
 	id_label = sorted(id_label, key=lambda x: x[0], reverse=False)
 	# print (id_label)
-	with open(qgis_file_in, 'w')as fout:
+	with open(qgis_file_in1, 'w')as fout:
 		fout.write('ID\tLabel\n')
 		for idx, label in id_label:
 			temp_str = str(idx) + '\t' + str(label) + '\n'
 			fout.write(temp_str)
 
+	########################################################################################################################
+
+	NEWALLDATA = np.array(NEWALLDATA)
+
+	D_NEWALLDATA = xgb.DMatrix(NEWALLDATA)
+
+	# prediction results
+	ALL_newvalue = bst.predict(D_NEWALLDATA)
+	ALL_newscores = np.zeros(len(ALL_newvalue))
+
+	for i in range(0, len(ALL_newvalue)):
+		if (ALL_newvalue[i] > 0.5):
+			ALL_newscores[i] = 1.0
+		else:
+			ALL_newscores[i] = 0.0
+
+	newid_label = zip(NEWALLID, ALL_newvalue)
+	newid_label = list(newid_label)
+
+	Invalid_ID = df_invaliddata2["DN"].values
+	for id in Invalid_ID:
+		newid_label.append((id, 0.0))
+
+	newid_label = sorted(newid_label, key=lambda x: x[0], reverse=False)
+	# print (id_label)
+	with open(qgis_file_in2, 'w')as fout:
+		fout.write('ID\tLabel\n')
+		for idx, label in newid_label:
+			temp_str = str(idx) + '\t' + str(label) + '\n'
+			fout.write(temp_str)\
+
 # translates output from main_poaching_predict into an ASC file
-def prep_qgis(qgis_file_in, qgis_file_out):
+def prep_qgis(qgis_file_in, qgis_file_out, cellsize, Xcorner, Ycorner, data):
 	print("start prep_qgis")
-	l_id = df_alldata["id"].values
-	l_X = df_alldata["X"].values
-	l_Y = df_alldata["Y"].values
+	l_id = data["DN"].values
+	l_X = data["X"].values
+	l_Y = data["Y"].values
 
 	if (len(l_id) != len(l_X)) or (len(l_X) != len(l_Y)):
 		print ("prep_qgis dim not match")
@@ -328,22 +405,21 @@ def prep_qgis(qgis_file_in, qgis_file_out):
 	for index in ID_coordinate:
 		x_set.add(ID_coordinate[index][0])
 		y_set.add(ID_coordinate[index][1])
-	max_x = int(max(x_set) / 200)
-	max_y = int(max(y_set) / 200)
+	min_x = int(min(x_set) / cellsize)
+	min_y = int(min(y_set) / cellsize)
+	max_x = int(max(x_set) / cellsize)
+	max_y = int(max(y_set) / cellsize)
 
-	Map = np.zeros([max_y + 1, max_x + 1])
+	#print("min_x: ", min_x, " max_x: ", max_x, " min_y: ", min_y, " max_y: ", max_y)
+
+	dim = 1 + int((max(x_set) - min(x_set)) / cellsize)
+	Map_index = np.zeros([dim, dim])
+	Map = np.zeros([dim, dim])
 	
 	# Load target list
 	id_label = {}
-	num_clusters = 50
 
-	file_in = qgis_file_in
-	file_out = qgis_file_out
-
-	# file_in = "紫貂_result_predict.txt"
-	# file_out = "ASC/紫貂_predict_heatmap.asc"
-
-	with open(file_in) as fin:
+	with open(qgis_file_in) as fin:
 		fin.readline()
 		for line in fin:
 			line = line.strip().split()
@@ -352,32 +428,41 @@ def prep_qgis(qgis_file_in, qgis_file_out):
 			label = float(line[1])
 			id_label[index] = label
 
+	valid = 0
 	count = 0
+	coincides = 0
 	for index in ID_coordinate:
-		id_x = int(ID_coordinate[index][0] / 200)
-		id_y = int(ID_coordinate[index][1] / 200)
+		id_x = int((ID_coordinate[index][0] - min(x_set)) / cellsize)
+		id_y = int((ID_coordinate[index][1] - min(y_set)) / cellsize)
 		try:
-			Map[id_y, id_x] = id_label[index]
+			valid += 1
+			if Map[id_y, id_x] > 1E-20:
+				coincides += 1
+				Map[id_y, id_x + 1] = id_label[index]
+			else: 
+				Map[id_y, id_x] = id_label[index]
+
 		except:
 			count += 1
 			# print index
 			Map[id_y, id_x] = 0.0
 
-	print("number of key error: %d" % count)
-
-	with open(file_out, 'w') as fout:
-		fout.write('NCOLS ' + str(max_x + 1) + '\n')
-		fout.write('NROWS ' + str(max_y + 1) + '\n')
-		#following coordinates need to be changed
-		fout.write('XLLCORNER 22393800\n')
-		fout.write('YLLCORNER 4810000\n')
-		fout.write('CELLSIZE 200\n')
+	print("number of key error: %d" % count, "  number of valid: ", valid, "  number of coincides: ", coincides)
+	
+	with open(qgis_file_out, 'w') as fout:
+		fout.write('NCOLS ' + str(dim) + '\n')
+		fout.write('NROWS ' + str(dim) + '\n')
+		fout.write('XLLCORNER ' + str(Xcorner) + '\n')
+		fout.write('YLLCORNER ' + str(Ycorner) + '\n')
+		fout.write('CELLSIZE ' + str(cellsize) + '\n')
 		fout.write('NODATA_VALUE 0\n')
 		info = ''
 		for line in Map:
 			info = ' '.join([str(x) for x in line]) + '\n' + info
 		fout.write(info)
-   
+		
+	print("done preparing")
+
 ####################################################################################################################################################  
 ####################################################################################################################################################
 ####################################################################################################################################################  
@@ -386,11 +471,10 @@ def prep_qgis(qgis_file_in, qgis_file_out):
 #   Module 3 : Running the main functions
 #
 
-# main functions:
 classify_familiar_trial()
-
-# main_animal_predict("紫貂")
-main_poaching_predict(qgis_file_in)
-prep_qgis(qgis_file_in, qgis_file_out)
+main_poaching_predict(qgis_file_in1, qgis_file_in2)
+prep_qgis(qgis_file_in1, qgis_file_out1, gridDim1, xcorner1, ycorner1, df_alldata)
+# uncomment this next line if we are not  testing on an unlabled conservation site
+prep_qgis(qgis_file_in2, qgis_file_out2, gridDim2, xcorner2, ycorner2, df_alldata2)
 
 

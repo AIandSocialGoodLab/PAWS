@@ -50,14 +50,12 @@ from qchainage import chainagetool
 #
 #   Important : use shapefiles of the same CRS
 #
-#   Subtle problem: qgis only allows attributes of maximum 10 character length,
-#   so attribute names will be restricted based off the beginning of the shapefile names
-#
 #   The current entries are placeholders/examples
+#
 
-#usually in meters, might differ based off CRS being used
-gridWidth = 200
-gridHeight = 200
+#might be in meters, might be roughly in longitude/latitude depending on CRS
+gridWidth = 0.003
+gridHeight = 0.003
 
 #set lowerleft and upper right coordinates of discretization if necessary
 #set to [-1, -1] and [-1, -1] if you don't want to customize the boundary
@@ -65,28 +63,31 @@ gridHeight = 200
 lowerleft = [-1, -1]
 upperright = [-1, -1]
 
-#specify the name off the boundary file, you do not need to specify the path to this file as
+#specify the name of the boundary file, you do not need to specify the path to this file as
 #long as all input shapefiles are in the same path described by input_path
-boundary_file = "TN_Core_AOI.shp"
+boundary_file = "boundary.shp"
 
 #import paths
-input_path = "/example/path/to/input/"
-output_path_shapefiles = "/example/path/to/output shapefiles/"
-output_path_excel = "/example/path/to/output excel/"
+input_path = "/example/path/to/auto input/"
+output_path_shapefiles = "/example/path/to/shapefile output/"
+output_path_excel = "/example/path/to/excel output/"
 
 #specify layers we want to find distances from 
-dist_layers = ['EXAMPLES.shp', 'Lake.shp', 'Rivers_HS.shp', 'TN_AllBasecamp.shp']
+dist_layers = ['village.shp', 'railways.shp', 'roads.shp', 'waterways.shp', \
+                    'places.shp', 'city.shp', 'town.shp', 'village.shp', 'hamlet.shp']
 
 #specify layers we want to find intersections with
-int_layers = ['EXAMPLES.shp', 'Drainage_clip.shp', 'Rivers_HS.shp', 'TN_AllBasecamp.shp']
+int_layers = ['village.shp', 'railways.shp', 'roads.shp', 'waterways.shp', \
+                    'places.shp', 'city.shp', 'town.shp', 'village.shp', 'hamlet.shp' \
+                    'poaching_wgs.shp']
 
 #specify raster files
-raster_layers = ['elevation.tif', 'slope.tif']
+raster_layers = ['altitude.tif', 'slope.tif']
 
 #patrolling layers (shapefiles of lines)
-patrols = ['patrol.shp']
+patrols = ['patrol history.shp']
 #specify level of splitting patrol lines into points (higher -> less points)
-POINT_DISTANCE = 100
+POINT_DISTANCE = 0.001
 
 
 ####################################################################################################################################################    
@@ -896,6 +897,7 @@ QgsMapLayerRegistry.instance().addMapLayers([conservation_site])
 canvas= qgis.utils.iface.mapCanvas()
 xmin,ymin,xmax,ymax = conservation_site.extent().toRectF().getCoords()
 
+
 #set boundary coordinates to customable points if specified
 if lowerleft[0] != -1:
     xmin = lowerleft[0]
@@ -953,7 +955,8 @@ for feat in pos_id_list:
     grid.changeAttributeValue(feat[2], dnindex, i)  
     i += 1
 
-grid.commitChanges()  # save changed and stop editing
+# save changes and stop editing
+grid.commitChanges()  
 
 #create centroids
 points = QgsVectorLayer("Point", "point grid", "memory")
@@ -965,6 +968,9 @@ points.updateFields()
 features = grid.getFeatures()
 num_features = 0
 for feature in features:
+
+    if (num_features % (len(features) // 100) == 0):
+        print((num_features // (len(features) // 100)) + " percent done")
 
     cur_point = QgsFeature()
     cur_point.setGeometry(feature.geometry().centroid())
@@ -984,18 +990,35 @@ points.commitChanges()
 #save the centroids
 QgsVectorFileWriter.writeAsVectorFormat(points, output_path_shapefiles + "point_grid.shp", "utf-8", None, "ESRI Shapefile")
 
+
 #load the centroids and grid
 centroids = import_layer(output_path_shapefiles + "point_grid.shp", "point grid")
 grid = import_layer(output_path_shapefiles + "discretized_grid.shp", "discretized grid")
 
+#export the coordinate features to excel
+mmqgis_attribute_export(iface, \
+        output_path_excel + "X.csv", \
+        centroids, ["DN", "X"], \
+        field_delimiter = ',', line_terminator = '\n', decimal_mark = '.')
+mmqgis_attribute_export(iface, \
+        output_path_excel + "Y.csv", \
+        centroids, ["DN", "Y"], \
+        field_delimiter = ',', line_terminator = '\n', decimal_mark = '.')
+
+#load the grid and centroids into QGIS
 QgsMapLayerRegistry.instance().addMapLayers([grid, centroids])
 
 ####################################################################################################################################################
 #
 # Module 4.2 calculating "is-" features
 #
+# Subtle problem: qgis only allows attributes of maximum 10 character length,
+# so attribute names will be restricted based off the beginning of the shapefile names
+# Thus, when we are creating the attributes we must restrict the name to a certain length
+# This also applies to the next few modules
 
 for int_layer in int_layers:
+  
   areas = []
   cur_layer = import_layer(input_path + int_layer, int_layer)
   for line_feature in cur_layer.getFeatures():
@@ -1024,18 +1047,20 @@ for int_layer in int_layers:
   else:
     print "Saved (0): ", int_layer
 
-  #add field to true features
+  #add fields to true and false features
   len_name = min((len(int_layer) - 4), 6)
   is1 = import_layer(output_path_shapefiles + "(1)is-" + int_layer, "is1_file")
   add_is_field(is1, "is-" + int_layer[0 : len_name], 1)
   is0 = import_layer(output_path_shapefiles + "(0)is-" + int_layer, "is0_file")
   add_is_field(is0, "is-" + int_layer[0 : len_name], 0)
 
+  #combine both layers back
   processing.runalg("qgis:mergevectorlayers", \
             output_path_shapefiles + "(0)is-" + int_layer + ";" + \
             output_path_shapefiles + "(1)is-" + int_layer, \
             output_path_shapefiles + "is-" + int_layer)
 
+  #load the combined layer
   final_layer = import_layer(output_path_shapefiles + "is-" + int_layer, "is-" + int_layer)
 
   #export as csv
@@ -1043,6 +1068,9 @@ for int_layer in int_layers:
         output_path_excel + "is-" + int_layer[0 : (len(int_layer) - 4)] + ".csv", \
         final_layer, ["DN", "is-" + int_layer[0 : len_name]], \
         field_delimiter = ',', line_terminator = '\n', decimal_mark = '.')
+
+  #reset selection
+  grid.removeSelection()
 
 ####################################################################################################################################################
 #
@@ -1064,6 +1092,7 @@ for dist_layer in dist_layers:
   else:
     print "Saved: dist_", dist_layer
 
+  #import the layer with the calculated distances
   actual_layer = import_layer(output_path_shapefiles + "dist-" + dist_layer, name)
 
   #export as csv
@@ -1072,24 +1101,28 @@ for dist_layer in dist_layers:
         actual_layer, ["DN", "distance"], \
         field_delimiter = ',', line_terminator = '\n', decimal_mark = '.')
 
+
 ####################################################################################################################################################
 #
-# Module 4.4 obtaining slope and elevation data
+# Module 4.4 obtaining raster values
 #
 
 for raster_name in raster_layers:
 
-    feature_name = raster_name[0:(len(raster_name) - 4)]
+    feature_name = raster_name[0:min((len(raster_name) - 4), 9)]
     raster_layer = import_layer_raster(input_path + raster_name, feature_name)
 
     raster_provider = raster_layer.dataProvider()
 
     pr = centroids.dataProvider()
     centroids.startEditing()
+    #centroids.dataProvider().addAttributes([QgsField(feature_name, QVariant.Int)])
     centroids.dataProvider().addAttributes([QgsField(feature_name, QVariant.Double)])
     centroids.updateFields()
 
     features = centroids.getFeatures()
+
+    #iterate through features to obtain their raster value
     for feat in features:
 
       point = QgsPoint((feat['X']), (feat['Y']))
@@ -1115,8 +1148,9 @@ for raster_name in raster_layers:
 
     centroids.commitChanges()
 
+    #exxport as csv
     mmqgis_attribute_export(iface, \
-            output_path_excel + feature_name + ".csv", \
+            output_path_excel + raster_name[0 : (len(raster_name) - 4)] + ".csv", \
             centroids, ["DN", feature_name], \
             field_delimiter = ',', line_terminator = '\n', decimal_mark = '.')
 
@@ -1135,6 +1169,7 @@ for patrol in patrols:
   pr = points.dataProvider()
   points.startEditing()
 
+  #dissect patrol lines into points
   for feat in features:
 
     if feat.geometry() is not None:
@@ -1162,11 +1197,14 @@ for patrol in patrols:
   else:
     print "Saved: points-", patrol
 
+  #count number of points in each discretized grid
   Result = output_path_shapefiles + "/num-" + patrol
-  processing.runalg("qgis:countpointsinpolygon", input_path + "rectangle-grid-abs.shp", export_points, 'NUMPOINTS', Result)
+  processing.runalg("qgis:countpointsinpolygon", input_path + "discretized_grid.shp", export_points, 'NUMPOINTS', Result)
 
+  #import the resulting layer with the new features
   result_layer = import_layer(Result, "result patrol")
 
+  #export as csv
   mmqgis_attribute_export(iface, \
         output_path_excel + "num" + patrol[0:(len(patrol)-4)] + ".csv", \
         result_layer, ["DN", "NUMPOINTS"], \
@@ -1177,22 +1215,28 @@ for patrol in patrols:
 # Module 4.6 combining csv files
 #
 
-files = [output_path_excel + "elevation.csv", output_path_excel + "slope.csv"]
-column_names = ["elevation", "slope"]
+files = [output_path_excel + "X.csv",output_path_excel + "Y.csv"]
+column_names = ["X", "Y"]
 
 for int_layer in int_layers:
   feature = int_layer[0:(len(int_layer) - 4)]
-  #field = int_layer[0:min(len(int_layer) - 4, 6)]
   files.append(output_path_excel + "is-" + feature + ".csv")
-  #column_names.append("is-" + field)
   column_names.append("is-" + feature)
 
 for dist_layer in dist_layers:
   feature = dist_layer[0:(len(dist_layer) - 4)]
-  #field = dist_layer[0:min(len(dist_layer) - 4, 4)]
   files.append(output_path_excel + "dist-" + feature + ".csv")
-  #column_names.append("dist-" + field)
   column_names.append("dist-" + feature)
+
+for rast_layer in raster_layers:
+  feature = rast_layer[0:(len(rast_layer) - 4)]
+  files.append(output_path_excel + feature + ".csv")
+  column_names.append(feature)
+
+for pat_layer in patrols:
+  feature = pat_layer[0:(len(pat_layer) - 4)]
+  files.append(output_path_excel + "num" + feature + ".csv")
+  column_names.append(feature)
 
 
 raw_df_list = []
@@ -1234,7 +1278,8 @@ select_df_list = [DN_df] + select_df_list
 comb_DN_ABC = pd.concat(select_df_list, axis=1)
 comb_DN_ABC.sort_values(by=["DN"],inplace=True)
 comb_DN_ABC.drop(['index'], axis=1)
-comb_DN_ABC.to_csv(output_path_excel + "final.csv")
+comb_DN_ABC.to_csv(output_path_excel + "final.csv") 
+
 
 print("Finished")
 
