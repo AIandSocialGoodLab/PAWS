@@ -18,5 +18,6 @@ python3 filename
 ```
 where the `filename` should be replaced with the name of the corresponding file to be run.
 
-### TODO
+### Important Note:
+Code in QuickEmployment_Toy folder has been modified to remove pandas dependency in automate_data.py. The pandas dependent code has been relocated to make_data_pandas.py. PAWS_tutorial.pdf is a tutorial for the code in QuickEmployment_Toy folder. To run the tool, please download QuickEmployment_Toy folder and follow PAWS_tutorial.pdf  
 
