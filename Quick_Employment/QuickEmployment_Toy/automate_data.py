@@ -57,6 +57,18 @@ import csv
 gridWidth = 0.01
 gridHeight = 0.01
 
+# Optional: if the input shapefiles are in WGS 84,  
+# could set useMeters to True
+# then provide the grid size in meters
+
+# formulas used
+# 111,111 meters in the y direction is 1 degree of latitude (y direction)
+# 111,111 * cos(latitude in degrees) is 1 degree of longitude (x direction)
+useMeters = False
+gridWidth_m = 100
+gridHeight_m = 100
+
+
 #set lowerleft and upper right coordinates of discretization if necessary
 #set to [-1, -1] and [-1, -1] if you don't want to customize the boundary
 #and simply want to use the tightest square discretization
@@ -900,6 +912,11 @@ if upperright[0] != -1:
     xmax = upperright[0]
 if upperright[1] != -1:
     ymax = upperright[1]
+
+if useMeters:
+    gridHeight = gridHeight_m / 111111.0
+    gridWidth = gridWidth_m / (111111.0 * math.cos(math.radians(abs(ymin))))
+
 
 rows = ceil((ymax-ymin)/gridHeight)
 cols = ceil((xmax-xmin)/gridWidth)
