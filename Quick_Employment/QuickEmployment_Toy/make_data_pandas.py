@@ -81,7 +81,7 @@ comb_DN_ABC.sort_values(by=["DN"],inplace=True)
 comb_DN_ABC.drop(['index'], axis=1)
 comb_DN_ABC.to_csv("final.csv") 
 
-sys.exit()
+# sys.exit()
 
 ####################################################################################################################################################  
 ####################################################################################################################################################
@@ -183,12 +183,6 @@ NegativeData = df_slct_negative.values
 
 UnknownData = df_slct_unlabeled.values
 
-maxvals = np.max(np.concatenate([PositiveData,NegativeData,UnknownData],axis=0),0,keepdims=True)[0:1]
-maxvals[maxvals==0]=1.
-
-PositiveData = PositiveData/maxvals
-NegativeData = NegativeData/maxvals
-UnknownData = UnknownData/maxvals
 
 ######################################################################################################################################################
 
@@ -203,7 +197,7 @@ df_invaliddata2 = df_alldata2[df_alldata2.isnull().any(axis=1)]
 df_slct_valid = df_alldata2[selected_features]
 
 NewAllData = df_slct_valid.values
-NewAllData = NewAllData/maxvals
+
 
 ######################################################################################################################################################
 
@@ -249,21 +243,11 @@ def classify_familiar_trial():
 		dataset = DataSet(positive=Fam, negative=NotFam, fold_num=FoldNum)
 		for fold_id in range(FoldNum):
 			dataset.update_negative(NotFam)
-			y_prob_sum = 0
 			for j in range(1):
 				train_data, train_label, test_data_pos, test_label_pos = dataset.get_train_neg_traintest_pos_smote(fold_id, 300)
 				test_data = np.concatenate((test_data_pos, neg), axis=0)
-				#test_data[:,12]=0
+				
 				test_label = np.concatenate((test_label_pos, neg_label), axis=0)
-
-				#################### Decision Tree ###################################
-				# clf = BaggingClassifier(tree.DecisionTreeClassifier(criterion = "entropy"), n_estimators=1000, max_samples=0.1)
-				# clf.fit(train_data, train_label)
-				# unl_scores = clf.predict_proba(UnknownData)[:,1]
-				# y_prob = clf.predict_proba(test_data)
-				# y_prob_sum = y_prob
-				# y_pred = np.argmax(y_prob_sum,1)
-				######################################################################
 
 				##################### xgboost ##################################
 				D_train = xgb.DMatrix(train_data, label = train_label)
@@ -365,10 +349,8 @@ def main_poaching_predict(qgis_file_in1, qgis_file_in2):
 	NEWALLID = list(NewAllDataID)
 	NEWALLDATA = list(df_slct_valid.values)
 
-	# how to sampling here
+	
 	train_data, train_label = dataset.get_train_all_up(100)
-	# clf = BaggingClassifier(tree.DecisionTreeClassifier(), n_estimators=1000, max_samples=0.1)
-	# clf.fit(train_data, train_label)
 
 	param = {'max_depth': 10, 'eta': 0.1, 'silent': 1, 'objective': 'binary:logistic'}
 	num_round = 1000
@@ -569,6 +551,6 @@ def prep_qgis(qgis_file_in, qgis_file_out, cellsize, Xcorner, Ycorner, data):
 main_poaching_predict(qgis_file_in1, qgis_file_in2)
 prep_qgis(qgis_file_in1, qgis_file_out1, gridDim1, xcorner1, ycorner1, df_alldata)
 # comment this next line if we are not  testing on an unlabled conservation site
-prep_qgis(qgis_file_in2, qgis_file_out2, gridDim2, xcorner2, ycorner2, df_alldata2)
+# prep_qgis(qgis_file_in2, qgis_file_out2, gridDim2, xcorner2, ycorner2, df_alldata2)
 
 
