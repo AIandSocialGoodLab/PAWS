@@ -2,7 +2,7 @@ import sys
 from dataset import DataSet
 #from SpecialDecisionTreeClassifier import *
 import matplotlib.pyplot as plt
-import pickle as cPickle
+import cPickle
 import numpy as np
 from sklearn import tree
 from sklearn.ensemble import BaggingClassifier

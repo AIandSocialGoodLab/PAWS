@@ -1,6 +1,6 @@
 import tensorflow as tf
 from dataset import DataSet
-import _pickle as cPickle
+import cPickle
 import numpy as np
 from sklearn import tree
 from sklearn.ensemble import BaggingClassifier
