@@ -2,7 +2,7 @@ import sys
 from dataset import DataSet
 #from SpecialDecisionTreeClassifier import *
 import matplotlib.pyplot as plt
-import _pickle as cPickle
+import pickle as cPickle
 import numpy as np
 from sklearn import tree
 from sklearn.ensemble import BaggingClassifier
@@ -17,7 +17,7 @@ parser.add_argument('--data_dir', default='./data/', help='path to directory wit
 opt = parser.parse_args()
 PositiveData, NegativeData, UnknownData = cPickle.load(open(opt.data_dir+'/processed_forest_trial_new_deploy.pkl','rb'))
 clusters = np.load(opt.data_dir+'/cluster40_scores.npy').item()
-clusters_50 = np.load(pt.data_dir+'/cluster50_scores.npy').item()
+clusters_50 = np.load(opt.data_dir+'/cluster50_scores.npy').item()
 clusters[0]=9
 clusters_50[0] = 9
 num_clusters=40
@@ -27,14 +27,14 @@ cluster_ids50 = {}
 for i in range(10):
     cluster_ids[i]=[]
     cluster_ids50[i]=[]
-with open(pt.data_dir+'/result_predict_i'+str(num_clusters)+'.txt') as fin:
+with open(opt.data_dir+'/result_predict_i'+str(num_clusters)+'.txt') as fin:
     fin.readline()
     for line in fin:
         line = line.strip().split()
         index = int(float(line[0]))
         label = int(float(line[1]))
         cluster_ids[clusters[label]].append(index)
-with open(pt.data_dir+'/result_predict_i'+str(50)+'.txt') as fin:
+with open(opt.data_dir+'/result_predict_i'+str(50)+'.txt') as fin:
     fin.readline()
     for line in fin:
         line = line.strip().split()

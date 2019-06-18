@@ -4,6 +4,7 @@ import numpy as np
 import cPickle
 import pdb
 import argparse
+import ipdb
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', default='./data/', help='path to directory with data')
 opt = parser.parse_args()
@@ -54,7 +55,6 @@ for i, row in enumerate(p.rows):
                 NegativeData[400000+int(line[0])] = line[1:13] + [line[16]]
         else:
             UnknownData[int(line[0])] = line[1:13] + [0]
-                #pdb.set_trace()
 
 cPickle.dump([PositiveData, NegativeData, UnknownData],
              open(output, 'w'))

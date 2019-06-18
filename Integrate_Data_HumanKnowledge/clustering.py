@@ -46,8 +46,8 @@ for i in range(wh_data.shape[0]):
     label[i] = np.argmin(np.sum(np.square(centroid-data1),1))
 labeli = label+1
 labeli=zip(ALLID, labeli)
-invalid=zip(Invalid_ID,[0.0]*len(Invalid_ID))
-id_label=sorted(np.concatenate([labeli,invalid],0), key=lambda x:x[0], reverse=False)
+# invalid=zip(Invalid_ID,[0.0]*len(Invalid_ID))
+id_label=sorted(np.concatenate([labeli],0), key=lambda x:x[0], reverse=False)
 with open(opt.data_dir+'/result_predict_i'+str(num_clusters)+'.txt', 'w')as fout:
     fout.write('ID\tLabel\n')
     for idx, labels in id_label:
